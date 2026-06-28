@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -6,14 +7,15 @@ import json
 
 app = FastAPI()
 
-# MongoDB
-client = MongoClient("mongodb://root:root@localhost:27017/")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://root:root@localhost:27017/")
+
+client = MongoClient(MONGO_URI)
 db = client["payment_flow"]
 coleccion = db["ordenes"]
 
-# Kafka Producer
 producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
@@ -28,7 +30,6 @@ def health():
 
 @app.post("/ordenes")
 def crear_orden(orden: OrdenRequest):
-    # Guardar en MongoDB
     nueva_orden = {
         "usuario_id": orden.usuario_id,
         "monto": orden.monto,
@@ -38,7 +39,6 @@ def crear_orden(orden: OrdenRequest):
     resultado = coleccion.insert_one(nueva_orden)
     orden_id = str(resultado.inserted_id)
 
-    # Publicar en Kafka
     producer.send('ordenes-nuevas', {
         "orden_id": orden_id,
         "usuario_id": orden.usuario_id,
