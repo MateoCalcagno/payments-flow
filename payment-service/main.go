@@ -67,7 +67,7 @@ func main() {
 		var orden Orden
 		json.Unmarshal(mensaje.Value, &orden)
 
-		// Idempotencia: verificar si ya procesamos esta orden
+		// Idempotencia
 		key := fmt.Sprintf("orden_procesada:%s", orden.OrdenID)
 		existe, err := rdb.Exists(ctx, key).Result()
 		if err != nil {
@@ -82,7 +82,7 @@ func main() {
 		fmt.Printf("✅ Procesando pago - Orden: %s | Usuario: %d | Monto: $%.2f\n",
 			orden.OrdenID, orden.UsuarioID, orden.Monto)
 
-		// Guardar en Redis con expiración de 24 horas
+		// Guardar en Redis
 		rdb.Set(ctx, key, "procesado", 24*time.Hour)
 
 		// Publicar en pagos-procesados
